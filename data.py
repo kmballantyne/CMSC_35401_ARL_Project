@@ -9,6 +9,28 @@ from constants import *
 
 random.seed(0)
 
+def load_split_list(split_file):
+    with open(split_file, 'r') as f:
+        filenames = [line.strip() for line in f]
+    return filenames
+
+def load_images_and_masks(image_dir, mask_dir, split_file):
+    filenames = load_split_list(split_file)
+    images = []
+    masks = []
+    for fname in filenames:
+        img = cv2.imread(os.path.join(image_dir, fname), cv2.IMREAD_GRAYSCALE).astype(np.float32)
+        img /= 255.0  # Normalize to [0, 1]
+        images.append(img)
+
+        mask = cv2.imread(os.path.join(mask_dir, fname), cv2.IMREAD_GRAYSCALE).astype(np.float32)
+        mask = (mask > 127).astype(np.float32)  # Binary mask
+        masks.append(mask)
+
+    images = np.expand_dims(np.array(images), axis=1)  # Shape: (N, 1, H, W)
+    masks = np.expand_dims(np.array(masks), axis=1)
+    return images, masks
+
 
 def preprocessor(input_img):
     """
@@ -35,7 +57,7 @@ def create_train_data():
     image_rows = img_rows
     image_cols = img_cols
 
-    images = os.listdir(data_path)
+    images = load_split_list(train_labeled_list)
     masks = os.listdir(masks_path)
     total = len(images)
 
@@ -43,7 +65,7 @@ def create_train_data():
     imgs = np.ndarray((total, image_rows, image_cols, 1), dtype=np.uint8)
     print(imgs.shape)
     # imgs_mask = np.ndarray((total, 1, image_rows, image_cols), dtype=np.uint8)
-    imgs_mask = np.ndarray((total, image_rows, image_cols, 1), dtype=np.uint8)
+    imgs_mask = cv2.imread(os.path.join(masks_path, image_name), cv2.IMREAD_GRAYSCALE)
     print(imgs_mask.shape)
     i = 0
     shuffle(images)

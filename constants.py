@@ -1,24 +1,32 @@
 # PATH definition
-global_path = './'
-data_path = global_path + 'orgData/trainImg/'                                       # DIRECTORY TO TRAIN IMAGE
-masks_path = global_path + 'orgData/trainGT/'                                       # DIRECTORY TO TRAIN MASK
-val_data_path = global_path + 'orgData/valImg/'                                     # DIRECTORY TO VALIDATION IMAGE
-val_masks_path = global_path + 'orgData/valGT/'                                     # DIRECTORY TO VALIDATION MASK
+global_path = '/home/kballantyne/CMSC_35401_ARL_Project/'  # PROJECT PATH
+data_path = global_path + 'images/training/'                                       # DIRECTORY TO TRAIN IMAGE
+masks_path = global_path + 'masks/training/'                                       # DIRECTORY TO TRAIN MASK
+val_data_path = global_path + 'images/valid/'                                     # DIRECTORY TO VALIDATION IMAGE
+val_masks_path = global_path + 'masks/valid/'
+
+# NEW: Paths to your split files
+splits_path = global_path + 'splits/'
+train_labeled_list = splits_path + 'train_labeled.txt'
+train_unlabeled_list = splits_path + 'train_unlabeled.txt'
+val_list = splits_path + 'val.txt'
+
+# DIRECTORY TO VALIDATION MASK
 exp = "DSAL"                                                                        # EXPERIMENT IDENTIFIER, SHOULD CONTAIN "CRF" IF DOING POST-PROCESSING
 initial_weights_path = global_path + f"{exp}/[initial_weights_name].hdf5"           # WEIGHTS PATH OF BASE MODEL
 final_weights_path = global_path + f"{exp}/[output_weights_name].hdf5"              # WEIGHTS PATH OF THE LATEST MODEL
 resume_on = 0                                                                       # RESUME TRAINING ON WHICH AL ITERATION?
 
 # Data definition
-img_rows = 64 * 3 # 192
-img_cols = 80 * 3 # 240
+img_rows = 64 * 8 # 512
+img_cols = 64 * 8 # 512
 lr = 1e-5
 USE_BCE = False                                                                     # FALSE FOR ISIC DATASET AND TRUE FOR RSNA
 z_score = False                                                                     # TRUE FOR ISIC DATASET AND FALSE FOR RSNA
 
-nb_total = 2000
-nb_train = 1600                                                                     # TOTAL NUM OF TRAINING POOL WITH ANNOTATIONS
-nb_labeled = 600                                                                    # NUM OF INITIAL TRAINING POOL FOR BASE MODEL
+nb_total = 2874
+nb_train = 2400 # Keep 474 (~15%) for validation/test                               # TOTAL NUM OF TRAINING POOL WITH ANNOTATIONS
+nb_labeled = 400                                                                    # NUM OF INITIAL TRAINING POOL FOR BASE MODEL
 nb_unlabeled = nb_train - nb_labeled                                                # NUM OF THE SAMPLES LEFT IN THE POOL
 
 # AL parameters
