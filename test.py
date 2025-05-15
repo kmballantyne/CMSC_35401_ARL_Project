@@ -7,7 +7,9 @@ from constants import *
 
 import pandas as pd 
 from data import preprocessor, load_val_data
-from unet import get_unet_ds, get_unet, dice_coef
+from unet_pretrained import get_pretrained_unet
+from unet import dice_coef
+# from unet import get_unet_ds, get_unet, dice_coef
 from utils import EnsembleDenseCRF, unnormalize
 from denseCRF import average_arbitrator
 import numpy as np
@@ -40,7 +42,7 @@ def create_test_data(data_path, masks_path):
         img = np.array([img])
         img = np.rollaxis(img, 0,3)
         imgs[i] = img
-        img_mask = cv2.imread(os.path.join(masks_path, image_name.replace('.jpg', '_segmentation.jpg')), cv2.IMREAD_GRAYSCALE)
+        img_mask = cv2.imread(os.path.join(masks_path, image_name.replace('.png', '_segmentation.png')), cv2.IMREAD_GRAYSCALE)
         img_mask = cv2.resize(img_mask, (image_cols, image_rows), interpolation=cv2.INTER_CUBIC)
         img_mask = np.array([img_mask])
         img_mask = np.rollaxis(img_mask, 0,3)
@@ -63,7 +65,7 @@ def saveResult_prediction_ds(save_path, file_List, npyfile):
             img[img > 0.5] = 1
             img[img <= 0.5] = 0
             img = cv2.resize(img, (img_cols, img_rows))
-            cv2.imwrite(os.path.join(save_path, file_List[i].replace('.jpg', f'_out{j}.jpg')), img * 255)
+            cv2.imwrite(os.path.join(save_path, file_List[i].replace('.png', f'_out{j}.png')), img * 255)
 
 
 def saveResult_prediction(save_path, file_List, npyfile, gt_file=None, ori_file=None):
@@ -73,13 +75,13 @@ def saveResult_prediction(save_path, file_List, npyfile, gt_file=None, ori_file=
         img = item[..., 0]
         if ori_file is not None:
             ori_img = unnormalize(ori_file[i])
-            cv2.imwrite(os.path.join(save_path, filename.replace('.jpg', '_ori.jpg')), ori_img)
+            cv2.imwrite(os.path.join(save_path, filename.replace('.png', '_ori.png')), ori_img)
             if False and post_process :
                 crf = EnsembleDenseCRF(MCRF_cfgs)
                 img = crf(ori_img, img, output_bases=False)
-        cv2.imwrite(os.path.join(save_path, filename.replace('.jpg', '_out.jpg')), img * 255.)
+        cv2.imwrite(os.path.join(save_path, filename.replace('.png', '_out.png')), img * 255.)
         if gt_file is not None:
-            cv2.imwrite(os.path.join(save_path, filename.replace('.jpg', '_gt.jpg')), gt_file[i] * 255.)
+            cv2.imwrite(os.path.join(save_path, filename.replace('.png', '_gt.png')), gt_file[i] * 255.)
 
 
 
@@ -117,10 +119,11 @@ def predict(data, model, iteration, labels=None):
             print(weights_path)
         model.load_weights(weights_path)
 
-        if "ds" in exp:
-            prediction = model.predict(data, verbose=0)[0]
-        else:
-            prediction = model.predict(data, verbose=0)
+        # if "ds" in exp:
+        #     prediction = model.predict(data, verbose=0)[0]
+        # else:
+        #     prediction = model.predict(data, verbose=0)
+        prediction = model.predict(data, verbose=0)
     else:
         predictions = []
         dice2p = OrderedDict()
@@ -164,7 +167,8 @@ def model_test(file_list, model_func=get_unet):
         model.load_weights(weights_path)
         predictions = predict(test_data, model, iteration, label_data)
 
-        target = [label_data] * 3 if "ds" in exp else label_data
+        # target = [label_data] * 3 if "ds" in exp else label_data
+        target = label_data
         scores = model.evaluate(test_data, target, batch_size=batch_size, verbose=0)
         df.loc[iteration, ['meanDC']] = get_test_dc(scores)
         print(iteration, 'DC', df.loc[iteration, ['meanDC']])
@@ -181,5 +185,5 @@ if not os.path.exists(global_path + f"{exp}_prediction"):
 else:
     print("Testing for", exp)
 
-
-model_test(file_list, get_unet_ds if "ds" in exp else get_unet)
+model_test(file_list, get_pretrained_unet)
+# model_test(file_list, get_unet_ds if "ds" in exp else get_unet)
