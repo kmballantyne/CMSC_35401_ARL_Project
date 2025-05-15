@@ -6,6 +6,7 @@ from data import load_train_data, load_val_data
 from data import create_train_data, create_val_data
 from utils import *
 from unet import *
+from unet_pretrained import get_pretrained_unet, convert_grayscale_batch_to_rgb
 import os, numpy as np
 from shutil import copyfile
 
@@ -30,8 +31,14 @@ labeled_index = np.arange(0, nb_labeled)
 #assert len(labeled_index) == 10
 unlabeled_index = np.array(list(filter(lambda x: x not in labeled_index, range(nb_train))))
 
+X_train = convert_grayscale_batch_to_rgb(X_train)
+X_val = convert_grayscale_batch_to_rgb(X_val)
+
 #(1) Initialize model
-model = get_unet_ds(dropout=True)  #
+
+model = get_pretrained_unet(input_shape=(img_rows, img_cols, 1))
+
+# model = get_unet_ds(dropout=True)  #
 # model.load_weights(initial_weights_path)
 mon = {"monitor": "conv2d_19_dice_coef", "mode": "max"}
 
