@@ -5,10 +5,20 @@ from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 from data import load_train_data, load_val_data
 from data import create_train_data, create_val_data
 from utils import *
+from compute_train_sets_ds_pretrained import compute_train_sets_ds
 from unet import *
 from unet_pretrained import get_pretrained_unet, convert_grayscale_batch_to_rgb
 import os, numpy as np
 from shutil import copyfile
+
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('--test', action='store_true', help="Run a test loop with few epochs.")
+args = parser.parse_args()
+
+if args.test:
+    nb_initial_epochs = 1
+    nb_active_epochs = 1
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 print("Running experiment", exp)
@@ -36,7 +46,7 @@ X_val = convert_grayscale_batch_to_rgb(X_val)
 
 #(1) Initialize model
 
-model = get_pretrained_unet(input_shape=(img_rows, img_cols, 1))
+model, _ = get_pretrained_unet(input_shape=(img_rows, img_cols, 1))
 
 # model = get_unet_ds(dropout=True)  #
 # model.load_weights(initial_weights_path)
@@ -47,18 +57,25 @@ if resume_on < 1:
     es = EarlyStopping(patience=50, **mon)
     lrs = ReduceLROnPlateau(verbose=1, cooldown=10, min_lr=lr / 100, patience=40, factor=0.1, **mon)
     model_checkpoint = ModelCheckpoint(initial_weights_path, save_best_only=True, verbose=1, **mon)
+    
+    model_checkpoint_last = ModelCheckpoint(global_path + f"{exp}/active_model_last_init.h5", 
+                                        save_best_only=False, verbose=0)
+    
+    
     log(f"Starting training of base model", 0, log_file)
-    callbacks = [model_checkpoint] + ([] if "ISIC" in global_path else [lrs]) + ([es] if "es" in exp else [])
+    callbacks = [model_checkpoint, model_checkpoint_last, lrs, es]
+    # callbacks = [model_checkpoint] + ([] if "ISIC" in global_path else [lrs]) + ([es] if "es" in exp else [])
     if apply_augmentation:
-        train_gen = trainGenerator(X_train[labeled_index], y_train[labeled_index])
+        train_gen = trainGenerator(X_train[labeled_index], y_train_multi = [y_train[labeled_index]] * 3)
         history = model.fit_generator(train_gen, steps_per_epoch=len(X_train[labeled_index]) // batch_size,
                                       callbacks=callbacks, verbose=1, validation_data=(X_val, [y_val] * 3),
                                       epochs=nb_initial_epochs)
 
         savehistory(history, global_path + f'{exp}_logs/init_train_aug_history.csv')
     else:
-        history = model.fit(X_train[labeled_index], [y_train[labeled_index] for _ in range(3)], batch_size=batch_size,
-                            nb_epoch=nb_initial_epochs, validation_data=(X_val, [y_val] * 3), verbose=1, shuffle=True,
+        y_train_multi = [y_train[labeled_index]] * 3  # For compatibility with the model
+        history = model.fit(X_train[labeled_index], y_train_multi, batch_size=batch_size,
+                            epochs=nb_initial_epochs, validation_data=(X_val, [y_val] * 3), verbose=1, shuffle=True,
                             callbacks=callbacks)
         savehistory(history, global_path + f'{exp}_logs/init_train_history.csv')
     log(history, 0, log_file)
@@ -79,9 +96,9 @@ for iteration in range(resume_on, nb_iterations + 1):
     # (2) Labeling
     crf_configs = MCRF_cfgs if post_process else None
     if iteration > 1 and os.path.exists(f"{global_path}{exp}_ranks/labeled_indices_activ{iteration - 1}.npy"):
-        labeled_index = np.load(f"{global_path}{exp}_ranks/labefled_indices_activ{iteration - 1}.npy")
+        labeled_index = np.load(f"{global_path}{exp}_ranks/labeled_indices_activ{iteration - 1}.npy")
         unlabeled_index = np.load(f"{global_path}{exp}_ranks/unlabeled_indices_activ{iteration - 1}.npy")
-    log(f"Compute trianing set of AL's {iteration} iteration", iteration, log_file)
+    log(f"Compute training set of AL's {iteration} iteration", iteration, log_file)
     X_labeled_train, y_labeled_train, labeled_index, unlabeled_index = compute_train_sets_ds(X_train, y_train, labeled_index,
                                                                                              unlabeled_index, weights_path,
                                                                                              iteration, nb_next_sample, log_file,
@@ -94,23 +111,29 @@ for iteration in range(resume_on, nb_iterations + 1):
     model.load_weights(weights_path)
     model_checkpoint = ModelCheckpoint(global_path + f"{exp}/active_model" + str(iteration) + ".h5", save_best_only=True,
                                        verbose=1, **mon)
+    model_checkpoint_last = ModelCheckpoint(global_path + f"{exp}/active_model_last_{iteration}.h5", 
+                                        save_best_only=False, verbose=0)
+    
     lrs = ReduceLROnPlateau(verbose=1, cooldown=10, min_lr=lr / 100, patience=25, factor=0.1, **mon)
     es = EarlyStopping(patience=30, **mon)
     # model.load_weights(weights)
     log(f"Starting training of AL's {iteration} iteration", iteration, log_file)
-    callbacks = [model_checkpoint] + ([] if "ISIC" in global_path else [lrs]) + ([es] if "es" in exp else [])
+    
+    callbacks = [model_checkpoint, model_checkpoint_last, lrs, es]
+    # callbacks = [model_checkpoint] + ([] if "ISIC" in global_path else [lrs]) + ([es] if "es" in exp else [])
     if apply_augmentation:
         # data_gen = data_generator(MultiOutputImageDataGenerator)
-        train_gen = trainGenerator(X_labeled_train, y_labeled_train)
+        train_gen = trainGenerator(X_labeled_train, y_train_multi=[y_labeled_train] * 3)
         history = model.fit_generator(train_gen, epochs=nb_active_epochs, verbose=1, steps_per_epoch=len(X_labeled_train) // batch_size,
                                       callbacks=callbacks, validation_data=(X_val, [y_val] * 3))
         savename = global_path + f'{exp}_logs/active_train_itera'+ str(iteration) + '_aug_history.csv'
     else:
-        history = model.fit(X_labeled_train, [y_labeled_train] * 3, batch_size=batch_size, epochs=nb_active_epochs,
+        history = model.fit(X_labeled_train, y_train_multi, batch_size=batch_size, epochs=nb_active_epochs,
                             validation_data=(X_val, [y_val] * 3), verbose=1, shuffle=True, callbacks=callbacks)
         savename = global_path + f'{exp}_logs/active_train_itera'+ str(iteration) + '_history.csv'
 
     log(history, iteration, log_file)
     savehistory(history, savename)
     model.save(final_weights_path)
-    model.save(global_path + f"{exp}/active_model_last{iteration}.h5")
+    model.save_weights(global_path + f"{exp}/weights_only/weights_only_iteration_{iteration}.h5")
+    model.save(global_path + f"{exp}/active_model/active_model_last{iteration}.h5")

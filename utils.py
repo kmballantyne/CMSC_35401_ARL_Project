@@ -269,15 +269,20 @@ def compute_train_sets_ds(X_train, y_train, labeled_index, unlabeled_index, weig
     :return: unlabeled_index: Update of labeled indices, removing the manual annotations.
 
     """
-    from unet import get_unet_ds
+    from unet_pretrained import get_pretrained_unet, convert_grayscale_batch_to_rgb
+    # from unet import get_unet_ds
     print_and_log("\nActive iteration " + str(iteration), logfile)
     print("-" * 50 + "\n")
 
     # predictions
-    modelPredictions = get_unet_ds(dropout=False)
+    # modelPredictions = get_unet_ds(dropout=False)
+    modelPredictions, _ = get_pretrained_unet(input_shape=(img_rows, img_cols, 1))
     modelPredictions.load_weights(weights_path)
+    X_input = convert_grayscale_batch_to_rgb(X_train[unlabeled_index])
     print_and_log("Computing log predictions ...\n", logfile)
-    predictions = modelPredictions.predict(X_train[unlabeled_index], verbose=0)
+    # predictions = modelPredictions.predict(X_train[unlabeled_index], verbose=0)
+    predictions = modelPredictions.predict(X_input, verbose=0)
+    main_predictions = predictions[0]  # [N, H, W, 1]
 
     df = pd.DataFrame(unlabeled_index, columns=['unlabeled_index'])
     df['meanIntersec'], df['R-DSC'], df['M-DSC'], df['L-DSC'] = '', '', '', ''
@@ -285,17 +290,19 @@ def compute_train_sets_ds(X_train, y_train, labeled_index, unlabeled_index, weig
     for index in range(0, len(unlabeled_index)):
         if index % 100 == 0:
             print_and_log("completed: " + str(index) + "/" + str(len(unlabeled_index)), logfile)
-        sample_prediction1 = cv2.threshold(predictions[0][index], 0.5, 1, cv2.THRESH_BINARY)[1].astype('uint8')
-        sample_prediction2 = cv2.threshold(predictions[1][index], 0.5, 1, cv2.THRESH_BINARY)[1].astype('uint8')
-        sample_prediction3 = cv2.threshold(predictions[2][index], 0.5, 1, cv2.THRESH_BINARY)[1].astype('uint8')
+        # sample_prediction1 = cv2.threshold(predictions[0][index], 0.5, 1, cv2.THRESH_BINARY)[1].astype('uint8')
+        # sample_prediction2 = cv2.threshold(predictions[1][index], 0.5, 1, cv2.THRESH_BINARY)[1].astype('uint8')
+        # sample_prediction3 = cv2.threshold(predictions[2][index], 0.5, 1, cv2.THRESH_BINARY)[1].astype('uint8')
+        pred_mask = main_predictions[index].squeeze()
+        sample_prediction = cv2.threshold(pred_mask, 0.5, 1, cv2.THRESH_BINARY)[1].astype('uint8')
         if index % 10 == 0:
-            cv2.imwrite(f"{global_path}{exp}_prediction/{unlabeled_index[index]}_sample_prediction1.jpg", sample_prediction1 * 255)
-            cv2.imwrite(f"{global_path}{exp}_prediction/{unlabeled_index[index]}_sample_prediction2.jpg", sample_prediction2 * 255)
-            cv2.imwrite(f"{global_path}{exp}_prediction/{unlabeled_index[index]}_sample_prediction3.jpg", sample_prediction3 * 255)
-        df.loc[index, ['meanIntersec']] = compute_dice_coef_ds(sample_prediction1,sample_prediction2, sample_prediction3)
-        df.loc[index, ["R-DSC"]] = compute_dice_coef(y_train[unlabeled_index[index]], sample_prediction1)
-        df.loc[index, ["M-DSC"]] = compute_dice_coef(sample_prediction1, sample_prediction2)
-        df.loc[index, ["L-DSC"]] = compute_dice_coef(sample_prediction1, sample_prediction3)
+            cv2.imwrite(f"{global_path}{exp}_prediction/{unlabeled_index[index]}_sample_prediction.png", sample_prediction * 255)
+            # cv2.imwrite(f"{global_path}{exp}_prediction/{unlabeled_index[index]}_sample_prediction2.jpg", sample_prediction2 * 255)
+            # cv2.imwrite(f"{global_path}{exp}_prediction/{unlabeled_index[index]}_sample_prediction3.jpg", sample_prediction3 * 255)
+        # df.loc[index, ['meanIntersec']] = compute_dice_coef_ds(sample_prediction1,sample_prediction2, sample_prediction3)
+        df.loc[index, ["R-DSC"]] = compute_dice_coef(y_train[unlabeled_index[index]], sample_prediction)
+        # df.loc[index, ["M-DSC"]] = compute_dice_coef(sample_prediction1, sample_prediction2)
+        # df.loc[index, ["L-DSC"]] = compute_dice_coef(sample_prediction1, sample_prediction3)
 
     df.to_csv(global_path + f'{exp}_ranks/maskMeans_act'+str(iteration) + '.csv')
     sort_df_des = df.sort_values('meanIntersec', ascending=DS_ASCEND)
@@ -313,7 +320,7 @@ def compute_train_sets_ds(X_train, y_train, labeled_index, unlabeled_index, weig
             pseudo_rank = list(set(np.random.choice(list(set(unlabeled_index) - set(transIndex)),
                                                     min(nb_pseudo, len(df) - nb_next_sample))))
         elif CONF_THRES:
-            unlabeled_confidences = list(map(lambda x: mean_confidence_uncertainty(predictions[0][list(unlabeled_index).index(x)]),
+            unlabeled_confidences = list(map(lambda x: mean_confidence_uncertainty(main_predictions[list(unlabeled_index).index(x)]),
                                              sort_df_des["unlabeled_index"]))
             df['unlabeled_confidences'] = unlabeled_confidences
             df.to_csv(global_path + f'{exp}_ranks/maskMeans_act'+str(iteration) + '.csv')
@@ -343,26 +350,26 @@ def compute_train_sets_ds(X_train, y_train, labeled_index, unlabeled_index, weig
                 pi_in_unlb = list(unlabeled_index).index(pi)
                 print_and_log(f"Post processing {pi}-th data in unlabeled_index", logfile)
                 np.save(f"{global_path}/{exp}_prediction/{pi}_ori", X_train[pi])
-                np.save(f"{global_path}/{exp}_prediction/{pi}_pre",  predictions[0][pi_in_unlb])
+                np.save(f"{global_path}/{exp}_prediction/{pi}_pre",  main_predictions[pi_in_unlb])
                 np.save(f"{global_path}/{exp}_prediction/{pi}_gt", y_train[pi])
-                pred_dices.append(compute_dice_coef(y_train[pi], predictions[0][pi_in_unlb]))
+                pred_dices.append(compute_dice_coef(y_train[pi], main_predictions[pi_in_unlb]))
                 if pre_ensemble:
                     post = ensCRF(X_train[pi], [cv2.threshold(scale[pi_in_unlb], 0.5, 1, cv2.THRESH_BINARY)[1].astype('uint8')
-                                                for scale in predictions[:CRF_SCALES]], output_bases=False)
+                                                for scale in main_predictions[:CRF_SCALES]], output_bases=False)
                 else:
                     post, pls = ensCRF(X_train[pi], [cv2.threshold(scale[pi_in_unlb], 0.5, 1, cv2.THRESH_BINARY)[1].astype('uint8')
-                                                     for scale in predictions[:CRF_SCALES]], output_bases=True)
+                                                     for scale in main_predictions[:CRF_SCALES]], output_bases=True)
                     pseudos_raw[i] = pls
                     base_ls_dice_avg.append([compute_dice_coef(y_train[pi], m) for m in pls])
 
-                disc = compute_dice_coef(predictions[0][pi_in_unlb], post)
+                disc = compute_dice_coef(main_predictions[pi_in_unlb], post)
                 df.loc[i, 'discrep'] = disc
                 if disc > USE_CRF_THRES:
                     pseudos[i] = post[..., None]
                     used += 1
                 else:
                     # Discard unreliable pseudo labels with too large changes after post processing
-                    pseudos[i] = predictions[0][pi_in_unlb]
+                    pseudos[i] = main_predictions[pi_in_unlb]
                 post_dices.append(compute_dice_coef(y_train[pi], post[..., None]))
             temp = np.mean(np.array(base_ls_dice_avg), axis=0)
             print_and_log(f"Before Dice Score: {sum(pred_dices) / len(pred_dices)}\t"
@@ -376,26 +383,34 @@ def compute_train_sets_ds(X_train, y_train, labeled_index, unlabeled_index, weig
             for i, pi in enumerate(pseudo_rank):
                 # Check if the most certain, aka most consistent samples are actually consistently poor
                 pi_in_unlb = list(unlabeled_index).index(pi)
-                sample_prediction1 = cv2.threshold(predictions[0][pi_in_unlb], 0.5, 1, cv2.THRESH_BINARY)[1].astype('uint8')
-                sample_prediction2 = cv2.threshold(predictions[1][pi_in_unlb], 0.5, 1, cv2.THRESH_BINARY)[1].astype('uint8')
-                sample_prediction3 = cv2.threshold(predictions[2][pi_in_unlb], 0.5, 1, cv2.THRESH_BINARY)[1].astype('uint8')
-                cv2.imwrite(f"{global_path}{exp}_prediction/{unlabeled_index[pi_in_unlb]}_pseudo_prediction1.jpg",
-                            sample_prediction1 * 255)
-                cv2.imwrite(f"{global_path}{exp}_prediction/{unlabeled_index[pi_in_unlb]}_pseudo_prediction2.jpg",
-                            sample_prediction2 * 255)
-                cv2.imwrite(f"{global_path}{exp}_prediction/{unlabeled_index[pi_in_unlb]}_pseudo_prediction3.jpg",
-                            sample_prediction3 * 255)
-                df.loc[i, ['meanIntersec']] = compute_dice_coef_ds(sample_prediction1, sample_prediction2, sample_prediction3)
-                df.loc[i, ["R-DSC"]] = compute_dice_coef(y_train[unlabeled_index[pi_in_unlb]], sample_prediction1)
-                df.loc[i, ["M-DSC"]] = compute_dice_coef(y_train[unlabeled_index[pi_in_unlb]], sample_prediction2)
-                df.loc[i, ["L-DSC"]] = compute_dice_coef(y_train[unlabeled_index[pi_in_unlb]], sample_prediction3)
+                # sample_prediction1 = cv2.threshold(predictions[0][pi_in_unlb], 0.5, 1, cv2.THRESH_BINARY)[1].astype('uint8')
+                # sample_prediction2 = cv2.threshold(predictions[1][pi_in_unlb], 0.5, 1, cv2.THRESH_BINARY)[1].astype('uint8')
+                # sample_prediction3 = cv2.threshold(predictions[2][pi_in_unlb], 0.5, 1, cv2.THRESH_BINARY)[1].astype('uint8')
+                # cv2.imwrite(f"{global_path}{exp}_prediction/{unlabeled_index[pi_in_unlb]}_pseudo_prediction1.jpg",
+                #             sample_prediction1 * 255)
+                # cv2.imwrite(f"{global_path}{exp}_prediction/{unlabeled_index[pi_in_unlb]}_pseudo_prediction2.jpg",
+                #             sample_prediction2 * 255)
+                # cv2.imwrite(f"{global_path}{exp}_prediction/{unlabeled_index[pi_in_unlb]}_pseudo_prediction3.jpg",
+                #             sample_prediction3 * 255)
+                # df.loc[i, ['meanIntersec']] = compute_dice_coef_ds(sample_prediction1, sample_prediction2, sample_prediction3)
+                # df.loc[i, ["R-DSC"]] = compute_dice_coef(y_train[unlabeled_index[pi_in_unlb]], sample_prediction1)
+                # df.loc[i, ["M-DSC"]] = compute_dice_coef(y_train[unlabeled_index[pi_in_unlb]], sample_prediction2)
+                # df.loc[i, ["L-DSC"]] = compute_dice_coef(y_train[unlabeled_index[pi_in_unlb]], sample_prediction3)
                 # pseudos[i] = np.array(np.mean(np.stack([np.array(scale[pi_in_unlb] >= .5).astype(scale.dtype) for scale in predictions]), axis=0) >= 0.5).astype(y_train.dtype)
-                pseudos[i] = sample_prediction1[..., None]
+                pred_mask = main_predictions[pi_in_unlb].squeeze()
+                sample_prediction = cv2.threshold(pred_mask, 0.5, 1, cv2.THRESH_BINARY)[1].astype('uint8')
+                pseudos[i] = sample_prediction[..., None]
+                # pseudos[i] = sample_prediction1[..., None]
         df.to_csv(global_path + f'{exp}_ranks/maskMeans_act' + str(iteration) + 'pseudos.csv')
 
     print_and_log(f'labeled_index list before: {len(labeled_index)}', logfile)
     print_and_log(f'unlabeled_index list before: {len(unlabeled_index)}', logfile)
     labeled_index = np.concatenate((labeled_index, transIndex)).astype(int)
+    
+    # A quick shape sanity check
+    assert X_train[labeled_index].shape[1:] == X_train[np.array(pseudo_rank).astype(int)].shape[1:], \
+    "Mismatch in image shapes when concatenating labeled + pseudo-labeled data"
+    
     X_labeled_train = np.concatenate((X_train[labeled_index], X_train[np.array(pseudo_rank).astype(int)]))
     X_labeled_train = X_labeled_train.reshape([len(labeled_index) + len(pseudo_rank), img_rows, img_cols, 1])
     if len(pseudo_rank):
@@ -410,7 +425,7 @@ def compute_train_sets_ds(X_train, y_train, labeled_index, unlabeled_index, weig
     print_and_log(f'labeled_index list after: {len(labeled_index)}', logfile)
     print_and_log(f'unlabeled_index list after: {len(unlabeled_index)}', logfile)
 
-    del modelPredictions, predictions
+    del modelPredictions, main_predictions
     return X_labeled_train, y_labeled_train, labeled_index, unlabeled_index
 
 

@@ -3,6 +3,7 @@ from __future__ import print_function
 import os
 import numpy as np
 from random import shuffle
+import random
 import cv2
 
 from constants import *
@@ -64,29 +65,47 @@ def create_train_data():
     # imgs = np.ndarray((total, 1, image_rows, image_cols), dtype=np.uint8)
     imgs = np.ndarray((total, image_rows, image_cols, 1), dtype=np.uint8)
     print(imgs.shape)
-    # imgs_mask = np.ndarray((total, 1, image_rows, image_cols), dtype=np.uint8)
-    imgs_mask = cv2.imread(os.path.join(masks_path, image_name), cv2.IMREAD_GRAYSCALE)
+    imgs_mask = np.ndarray((total, image_rows, image_cols, 1), dtype=np.uint8)
     print(imgs_mask.shape)
+    # imgs_mask = np.ndarray((total, 1, image_rows, image_cols), dtype=np.uint8)
+    # imgs_mask = cv2.imread(os.path.join(masks_path, image_name), cv2.IMREAD_GRAYSCALE)
+    # print(imgs_mask.shape)
     i = 0
     shuffle(images)
     for image_name in images:
-        print(i)
-        print(image_name)
+        # print(i)
+        # print(image_name)
         img = cv2.imread(os.path.join(data_path, image_name), cv2.IMREAD_GRAYSCALE)
         img = cv2.resize(img, (image_cols, image_rows), interpolation=cv2.INTER_CUBIC)
         img = np.array([img])
-        print('img shape before :',img.shape)
+        # print('img shape before :',img.shape)
         img = np.rollaxis(img, 0,3)
-        print('img shape after :',img.shape)
+        # print('img shape after :',img.shape)
         imgs[i] = img
 
         # img_mask = cv2.imread(os.path.join(masks_path, image_mask_name), cv2.IMREAD_GRAYSCALE)
-        img_mask = cv2.imread(os.path.join(masks_path, image_name.replace('.jpg', '_segmentation.png')), cv2.IMREAD_GRAYSCALE)
+        # name_base, _ = os.path.splitext(image_name)
+        # mask_name = name_base + '_segmentation.png'
+        
+        mask_name = image_name
+        mask_path = os.path.join(masks_path, mask_name)
+
+        # Add debug print
+        # print(f"Looking for mask: {mask_path}")
+        # if not os.path.exists(mask_path):
+        #     raise FileNotFoundError(f"Mask not found: {mask_path}")
+
+        img_mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+        if img_mask is None:
+            raise ValueError(f"cv2.imread failed to load image from {mask_path}")
+
+        img_mask = cv2.imread(os.path.join(masks_path, mask_name), cv2.IMREAD_GRAYSCALE)
+        # img_mask = cv2.imread(os.path.join(masks_path, image_name.replace('.png', '_segmentation.png')), cv2.IMREAD_GRAYSCALE)
         img_mask = cv2.resize(img_mask, (image_cols, image_rows), interpolation=cv2.INTER_CUBIC)
         img_mask = np.array([img_mask])
         # img_mask = np.reshape(img_mask, (image_rows, image_cols, 1))
         img_mask = np.rollaxis(img_mask, 0,3)
-        print('img_mask shape: ', img_mask.shape)
+        # print('img_mask shape: ', img_mask.shape)
         imgs_mask[i] = img_mask
         i += 1
 
@@ -109,16 +128,16 @@ def create_val_data(sig="val"):
 
     # imgs = np.ndarray((total, 1, image_rows, image_cols), dtype=np.uint8)
     imgs = np.ndarray((total, image_rows, image_cols, 1), dtype=np.uint8)
-    print(imgs.shape)
+    # print(imgs.shape)
     imgs_mask = np.ndarray((total, image_rows, image_cols, 1), dtype=np.uint8)
-    print(imgs_mask.shape)
+    # print(imgs_mask.shape)
     i = 0
     shuffle(images)
     for image_name in images:
 
         img = cv2.imread(os.path.join(val_data_path.replace("test", sig) if sig != "test" else val_data_path,
                                       image_name), cv2.IMREAD_GRAYSCALE)
-        print(image_name)
+        # print(image_name)
         img = cv2.resize(img, (image_cols, image_rows), interpolation=cv2.INTER_CUBIC)
         img = np.array([img])
         img = np.rollaxis(img, 0,3)
@@ -140,7 +159,7 @@ def create_val_data(sig="val"):
 def load_train_data():
     """
     Load training data from project path
-    :return: [X_train, y_train] numpy arrays containing the training data and their respective masks.
+    :return: [X_val, [y_val, y_val, y_val]] numpy arrays containing the training data and their respective masks.
     """
     print("\nLoading train data...\n")
     X_train = np.load(global_path + 'imgs_train.npy')
@@ -162,7 +181,7 @@ def load_train_data():
 
     y_train = y_train.astype('float32')
     y_train /= 255.  # scale masks to [0, 1]
-    return X_train, y_train
+    return X_train, [y_train, y_train, y_train]
 
 
 def unnormalize(img: np.array):
@@ -175,7 +194,7 @@ def unnormalize(img: np.array):
 def load_val_data(sig="val"):
     """
     Load training data from project path
-    :return: [X_train, y_train] numpy arrays containing the training data and their respective masks.
+    :return: [X_val, [y_val, y_val, y_val]] numpy arrays containing the training data and their respective masks.
     """
     print(f"\nLoading {sig} data...\n")
     X_val = np.load(global_path + f'imgs_{sig}.npy')
@@ -197,7 +216,7 @@ def load_val_data(sig="val"):
 
     y_val = y_val.astype('float32')
     y_val /= 255.  # scale masks to [0, 1]
-    return X_val, y_val
+    return X_val, [y_val, y_val, y_val]
 
 
 if __name__ == '__main__':

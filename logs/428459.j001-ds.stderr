@@ -1,0 +1,27 @@
+2025-05-15 12:45:41.002709: E tensorflow/stream_executor/cuda/cuda_driver.cc:271] failed call to cuInit: CUDA_ERROR_NO_DEVICE: no CUDA-capable device is detected
+2025-05-15 12:45:41.002949: I tensorflow/stream_executor/cuda/cuda_diagnostics.cc:163] no NVIDIA GPU device is present: /dev/nvidia0 does not exist
+2025-05-15 12:45:41.003103: I tensorflow/core/platform/cpu_feature_guard.cc:142] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX2 FMA
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2025-05-15 12:45:44.732306: I tensorflow/compiler/mlir/mlir_graph_optimization_pass.cc:185] None of the MLIR Optimization Passes are enabled (registered 2)
+2025-05-15 13:11:32.368297: W tensorflow/core/framework/cpu_allocator_impl.cc:80] Allocation of 9040822272 exceeds 10% of free system memory.
+WARNING:tensorflow:Can save best model only with conv2d_19_dice_coef available, skipping.
+WARNING:tensorflow:Learning rate reduction is conditioned on metric `conv2d_19_dice_coef` which is not available. Available metrics are: loss,iou_score,val_loss,val_iou_score,lr
+WARNING:tensorflow:Can save best model only with conv2d_19_dice_coef available, skipping.
+WARNING:tensorflow:Learning rate reduction is conditioned on metric `conv2d_19_dice_coef` which is not available. Available metrics are: loss,iou_score,val_loss,val_iou_score,lr
+WARNING:tensorflow:Can save best model only with conv2d_19_dice_coef available, skipping.
+WARNING:tensorflow:Learning rate reduction is conditioned on metric `conv2d_19_dice_coef` which is not available. Available metrics are: loss,iou_score,val_loss,val_iou_score,lr
+WARNING:tensorflow:Can save best model only with conv2d_19_dice_coef available, skipping.
+WARNING:tensorflow:Learning rate reduction is conditioned on metric `conv2d_19_dice_coef` which is not available. Available metrics are: loss,iou_score,val_loss,val_iou_score,lr
+WARNING:tensorflow:Can save best model only with conv2d_19_dice_coef available, skipping.
+WARNING:tensorflow:Learning rate reduction is conditioned on metric `conv2d_19_dice_coef` which is not available. Available metrics are: loss,iou_score,val_loss,val_iou_score,lr
+WARNING:tensorflow:Can save best model only with conv2d_19_dice_coef available, skipping.
+WARNING:tensorflow:Learning rate reduction is conditioned on metric `conv2d_19_dice_coef` which is not available. Available metrics are: loss,iou_score,val_loss,val_iou_score,lr
+WARNING:tensorflow:Can save best model only with conv2d_19_dice_coef available, skipping.
+WARNING:tensorflow:Learning rate reduction is conditioned on metric `conv2d_19_dice_coef` which is not available. Available metrics are: loss,iou_score,val_loss,val_iou_score,lr
+WARNING:tensorflow:Can save best model only with conv2d_19_dice_coef available, skipping.
+WARNING:tensorflow:Learning rate reduction is conditioned on metric `conv2d_19_dice_coef` which is not available. Available metrics are: loss,iou_score,val_loss,val_iou_score,lr
+WARNING:tensorflow:Can save best model only with conv2d_19_dice_coef available, skipping.
+WARNING:tensorflow:Learning rate reduction is conditioned on metric `conv2d_19_dice_coef` which is not available. Available metrics are: loss,iou_score,val_loss,val_iou_score,lr
+WARNING:tensorflow:Can save best model only with conv2d_19_dice_coef available, skipping.
+WARNING:tensorflow:Learning rate reduction is conditioned on metric `conv2d_19_dice_coef` which is not available. Available metrics are: loss,iou_score,val_loss,val_iou_score,lr
+slurmstepd-j001-ds: error: *** JOB 428459 ON j001-ds CANCELLED AT 2025-05-16T00:45:09 DUE TO TIME LIMIT ***

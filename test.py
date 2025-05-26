@@ -23,8 +23,8 @@ def create_test_data(data_path, masks_path):
     """
     Generate training data numpy arrays and save them into the project path
     """
-    image_rows = 420
-    image_cols = 580
+    image_rows = 512
+    image_cols = 512
 
     images = os.listdir(data_path)
     total = len(images)
@@ -152,7 +152,7 @@ def get_test_dc(scores):
     return scores[1]
 
 
-def model_test(file_list, model_func=get_unet):
+def model_test(file_list, model_func=get_pretrained_unet):
     test_data, label_data = load_val_data("test")
     print(test_data.shape)
     df = pd.DataFrame(np.arange(1, nb_iterations+1), columns=['index'])
