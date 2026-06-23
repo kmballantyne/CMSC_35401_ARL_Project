@@ -1,1 +1,3 @@
-# CMSC_35401_ARL_Project
+# Deeply Supervised Active Learning for Medical Image Segmentation: A Study on the CHAOS CT Dataset
+
+**Tech Stack:** Python · GCS · Slurm
