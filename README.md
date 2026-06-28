@@ -9,3 +9,6 @@
 [![Keras](https://img.shields.io/badge/Keras-D00000?style=for-the-badge&logo=keras&logoColor=white)](https://keras.io/)
 [![NumPy](https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white)](https://numpy.org/)
 [![Slurm](https://img.shields.io/badge/Slurm-grey?style=for-the-badge)](https://slurm.schedmd.com/)
+
+## Overview
+In this project I investigated the a novel method of leveraging both deep active learning and semi-supervised learning in DSAL to perform annotations on medical images and compared its performance against traditional supervised models. I aim to understand how combining both technical methods can improve medical image analysis and annotation to save time and labor costs.
